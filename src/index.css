@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --color-udvash-red: #E31E24;
+  --color-udvash-pink: #E91E63;
+  --color-udvash-purple: #4A143C;
+  --color-udvash-grey-bg: #CFD8DC;
+  --color-udvash-grey-text: #607D8B;
+}
+
+body {
+  @apply font-sans text-slate-900 bg-white antialiased;
+}
+
+.registration-container {
+  @apply border border-slate-200 rounded-lg overflow-hidden bg-white;
+}
+
+.footer-link {
+  @apply transition-colors duration-200 hover:text-white cursor-pointer;
+}
