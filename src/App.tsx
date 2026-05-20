@@ -337,27 +337,121 @@ const RegistrationCard = () => {
       };
       console.log("Sending data to /api/submit:", dataToSubmit);
 
-      const response = await fetch("/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSubmit)
-      });
-      console.log("Response received:", response);
+      let response: Response | undefined;
+      let isFallbackUsed = false;
 
-      const result = await response.json();
-      console.log("Result received:", result);
-      
-      if (result.success) {
-        alert(result.message);
-        // Optional: clear form or redirect
-      } else {
-        // Show detailed error if available
-        const errorMsg = result.details ? `${result.error}: ${result.details}` : (result.error || "Submission failed");
-        alert(errorMsg);
+      try {
+        response = await fetch("/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dataToSubmit)
+        });
+      } catch (err) {
+        console.warn("Express server submission failed or unavailable, trying direct Google Sheet fallback...", err);
       }
-    } catch (error) {
+
+      if (!response || !response.ok) {
+        isFallbackUsed = true;
+        console.log("Using direct Google Sheet fallback...");
+
+        const formatString = (val: any) => {
+          if (val === undefined || val === null || val === '') return '';
+          return `'${val}`;
+        };
+
+        const mappedData = {
+          'Timestamp': new Date().toLocaleString('en-GB'),
+          'Full Name': dataToSubmit.fullName || '',
+          'Nick Name': dataToSubmit.nickName || '',
+          'T-PIN': formatString(dataToSubmit.teachersPin),
+          'Institute': dataToSubmit.institute || '',
+          'Department': dataToSubmit.department || '',
+          'HSC Passing Year': dataToSubmit.hscPassingYear || '',
+          'Religion': dataToSubmit.religion || '',
+          'Gender': dataToSubmit.gender || '',
+          'Mobile Number 1': formatString(dataToSubmit.mobileNumber1),
+          'Mobile Number 2': formatString(dataToSubmit.mobileNumber2),
+          'Nagad Number': formatString(dataToSubmit.nagadNumber),
+          'Email': dataToSubmit.email || '',
+          'Facebook ID': dataToSubmit.facebookId || '',
+          'Teacher Activity Choice 1': dataToSubmit.activities?.[0] || '',
+          'Teacher Activity Choice 2': dataToSubmit.activities?.[1] || '',
+          'Teacher Activity Choice 3': dataToSubmit.activities?.[2] || '',
+          'Teacher Activity Choice 4': dataToSubmit.activities?.[3] || '',
+          'Subjects': (() => {
+            const subjects = (dataToSubmit.subjects || []).filter((s: any) => s && String(s).trim() !== '');
+            const scriptSubjects = (dataToSubmit.scriptSubjects || [])
+              .filter((s: any) => s && String(s).trim() !== '')
+              .map((s: any) => `(Script E: ${s})`);
+            return Array.from(new Set([...subjects, ...scriptSubjects])).join(', ');
+          })(),
+          'Version Priority Choice 1': dataToSubmit.versionPriority?.[0] || '',
+          'Version Priority Choice 2': dataToSubmit.versionPriority?.[1] || '',
+          'Medium of Study (HSC Level)': dataToSubmit.mediumOfEducation || '',
+          'MS Teams Telegram': dataToSubmit.teamsTelegram || '',
+          'Admition Unit': dataToSubmit.admissionUnit || '',
+          'Admission Position': formatString(dataToSubmit.admissionPosition),
+          'HSC Number': formatString(dataToSubmit.hscRoll),
+          'HSC Reg Number': formatString(dataToSubmit.hscRegistration),
+          'HSC Board': dataToSubmit.hscBoard || '',
+          'HSC GPA': formatString(dataToSubmit.gpa),
+          'Evaluation Method': dataToSubmit.evaluationMethod || '',
+          'বাংলায় সম্পূর্ণ নাম': dataToSubmit.bengaliName || '',
+          'Date of Birth': dataToSubmit.dob || '',
+          'Blood Group': dataToSubmit.bloodGroup || '',
+          'College Name': dataToSubmit.collegeName || '',
+          'Fathers Name': dataToSubmit.fatherName || '',
+          'Fathers Occupation': dataToSubmit.fatherOccupation || '',
+          'Fathers Mobile': formatString(dataToSubmit.fatherMobile),
+          'Mothers Name': dataToSubmit.motherName || '',
+          'Mothers Occupation': dataToSubmit.motherOccupation || '',
+          'Mothers Mobile': formatString(dataToSubmit.motherMobile),
+          'National ID No': formatString(dataToSubmit.nid),
+          'Present Area': dataToSubmit.presentArea || '',
+          'Home District': dataToSubmit.homeDistrict || '',
+          'Campus': dataToSubmit.campus || '',
+          'Evaluation Shift': Array.isArray(dataToSubmit.evaluationShift) ? dataToSubmit.evaluationShift.join(', ') : (dataToSubmit.evaluationShift || ''),
+          'Image File Name': dataToSubmit.userImgName || '',
+          'ID Card File Name': dataToSubmit.idCardName || '',
+          'Academic Student': dataToSubmit.isAcademicStudent || '',
+          'Why Join': dataToSubmit.whyJoin || '',
+          'Action': 'Pending',
+          'action': 'registration'
+        };
+
+        const directUrl = (import.meta as any).env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwTXbsmEtgztw83lVTZbByxFEeILxk9P43Mg44cKNLHSQduiZz9Tcjs6uBIUVEFuQKoCQ/exec";
+
+        const fallbackResponse = await fetch(directUrl, {
+          method: "POST",
+          body: JSON.stringify(mappedData),
+          headers: { "Content-Type": "text/plain" },
+          mode: "cors"
+        });
+
+        if (!fallbackResponse.ok) {
+          const errMsg = await fallbackResponse.text();
+          throw new Error(`Direct fallback failed with status ${fallbackResponse.status}: ${errMsg}`);
+        }
+
+        const fallbackResult = await fallbackResponse.json();
+        if (fallbackResult.success || fallbackResult.status === "success") {
+          alert("Successfully submitted to Google Sheets!");
+        } else {
+          throw new Error(fallbackResult.error || "Direct submission failed");
+        }
+      } else {
+        const result = await response.json();
+        console.log("Result received:", result);
+        if (result.success) {
+          alert(result.message);
+        } else {
+          const errorMsg = result.details ? `${result.error}: ${result.details}` : (result.error || "Submission failed");
+          alert(errorMsg);
+        }
+      }
+    } catch (error: any) {
       console.error("Submission failed:", error);
-      alert("Something went wrong. Please check console for details. Make sure you have configured Google Sheets credentials in the app settings.");
+      alert("Something went wrong! Error: " + (error?.message || "Please check browser console for details."));
     } finally {
       setIsSubmitting(false);
     }
