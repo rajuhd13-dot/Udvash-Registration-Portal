@@ -803,7 +803,7 @@ const RegistrationCard = () => {
                                 : 'border-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
                             }`}
                           >
-                            <option value="">{i === 0 ? "Sub: Choice 1 (Script Evaluation)" : `--Choice ${i+1} (Optional)--`}</option>
+                            <option value="">{i === 0 ? "Choice 1 (Script Evaluation)" : `--Choice ${i+1} (Optional)--`}</option>
                             {scriptEvaluationSubjectsList.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         );
